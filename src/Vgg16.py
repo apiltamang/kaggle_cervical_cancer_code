@@ -1,20 +1,12 @@
 from __future__ import division, print_function
 
-import os, json
-from glob import glob
+import json
 import numpy as np
-from scipy import misc, ndimage
-from scipy.ndimage.interpolation import zoom
-
-from keras.utils.data_utils import get_file
-from keras import backend as K
-from keras.layers.normalization import BatchNormalization
 from keras.utils.data_utils import get_file
 from keras.models import Sequential
 from keras.layers.core import Flatten, Dense, Dropout, Lambda
 from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
-from keras.layers.pooling import GlobalAveragePooling2D
-from keras.optimizers import SGD, RMSprop, Adam
+from keras.optimizers import Adam
 from keras.preprocessing import image
 
 class Vgg16():
@@ -23,7 +15,7 @@ class Vgg16():
     vgg_mean = np.array([123.68, 116.779, 103.939], dtype=np.float32).reshape((3, 1, 1))
 
     def __init__(self):
-        self.FILE_PATH = './weights/'
+        self.FILE_PATH = '../weights/'
         self.model = None
         self.create()
         self.get_classes()
@@ -59,7 +51,7 @@ class Vgg16():
 
     def create(self):
         model = self.model = Sequential()
-        model.add(Lambda(vgg_preprocess, input_shape=(3,224,224), output_shape=(3,224,224)))
+        model.add(Lambda(self.vgg_preprocess, input_shape=(3,224,224), output_shape=(3,224,224)))
 
         self.ConvBlock(2, 64)
         self.ConvBlock(2, 128)

@@ -1,6 +1,6 @@
 
-import Vgg16
-import Vgg16BN
+from Vgg16 import Vgg16
+# import Vgg16BN
 from IPython.display import FileLink
 
 class Executor:
@@ -11,6 +11,7 @@ class Executor:
         self.train_batches = None
         self.val_batches = None
         self.data_path = None
+        self.learn_rate = None
 
     def and_(self):
         return self;
@@ -65,26 +66,46 @@ class ExecutorBuilder:
         self.executor = Executor()
 
     def and_(self):
-        return self.executor
+        return self
 
     def with_Vgg16(self):
         vgg16 = Vgg16()
         self.executor.set_Vgg(vgg16)
-        return self.executor
+        return self
 
-    def with_Vgg16BN(self):
-        vgg16 = Vgg16BN()
-        self.executor.set_Vgg(vgg16)
-        return self.executor
+    # def with_Vgg16BN(self):
+    #     vgg16 = Vgg16BN()
+    #     self.executor.set_Vgg(vgg16)
+    #     return self
 
     def data_on_path(self, data_folder):
         self.executor.data_path = data_folder
         self.executor.init_validation_and_training_data()
-        return self.executor
+        return self
 
-    def batch_size(self, batch_size):
+    def train_batch_size(self, batch_size):
         self.executor.batch_size = batch_size
-        return self.executor
+        return self
+
+    def learn_rate(self, val):
+        self.executor.learn_rate = val
+        return self
 
     def build(self):
         return self.executor
+
+
+if __name__ == "__main__":
+    executor = ExecutorBuilder().\
+        with_Vgg16().\
+        and_().\
+        data_on_path("../data/sample/").\
+        and_().\
+        train_batch_size(2).\
+        and_().\
+        learn_rate(0.001).\
+        build()
+
+
+    executor.finetune_only_softmax_layer_for_epochs(5).and_().save_model_to_file("weights.trial.h5").and_().\
+        build_predictions_on_test_data().and_().save_model_to_file("predictions.trial.h5")

@@ -6,7 +6,7 @@ class Vgg16BN(Vgg16):
     """The VGG 16 Imagenet model with Batch Normalization for the Dense Layers"""
 
     def __init__(self, size=(224,224), include_top=True):
-        self.FILE_PATH = './weights/'
+        self.FILE_PATH = '../weights/'
         self.create(size, include_top)
         super(Vgg16BN, self).get_classes()
 
