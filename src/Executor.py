@@ -1,3 +1,5 @@
+from keras.layers import Dense
+from keras.optimizers import Adam
 
 from Vgg16 import Vgg16
 from IPython.display import FileLink
@@ -30,7 +32,6 @@ class Executor:
 
     def finetune_only_softmax_layer_for_epochs(self, num_epochs):
         self.vgg.finetune(self.train_batches)
-        self.vgg.compile(self.learn_rate)
 
         self.vgg.fit_generator(self.train_batches, self.val_batches, nb_epoch=num_epochs)
         print("Vgg model finetuned.")
@@ -61,10 +62,27 @@ class Executor:
         FileLink(fileName)
         return self;
 
+    def make_linear_layers_trainable(self):
+
+        layers = self.vgg.model.layers
+        # Get the index of the first dense layer...
+        first_dense_idx = [index for index,layer in enumerate(layers) if type(layer) is Dense][0]
+        print("first dense layer at index: ", first_dense_idx)
+
+        # ...and set this and all subsequent layers to trainable
+        for layer in layers[first_dense_idx:]: layer.trainable=True
+        print("all dense layers set trainable.")
+
+        return self
+
+    def compile(self, learn_rate=0.001):
+        self.vgg.compile(lr=learn_rate)
+
 class ExecutorBuilder:
 
     def __init__(self):
         self.executor = Executor()
+        self.train_dense_layers = False
 
     def and_(self):
         return self
@@ -86,9 +104,18 @@ class ExecutorBuilder:
         self.executor.learn_rate = val
         return self
 
+    def trainable_linear_layers(self, condition=True):
+        self.train_dense_layers = condition
+        return self
+
     def build(self):
         self.executor.set_Vgg(self.vgg)
         self.executor.init_validation_and_training_data()
+
+        if(self.train_dense_layers):
+            self.executor.make_linear_layers_trainable()
+
+        self.executor.compile(self.learn_rate)
         return self.executor
 
 
@@ -101,6 +128,8 @@ if __name__ == "__main__":
         learn_rate(0.001).\
         and_().\
         data_on_path("../data/sample/").\
+        and_().\
+        trainable_linear_layers().\
         build()
 
     executor.finetune_only_softmax_layer_for_epochs(1).and_().save_model_to_file("weights.trial.h5").and_().\
