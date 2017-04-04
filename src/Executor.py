@@ -1,3 +1,4 @@
+import sys
 from keras.layers import Dense
 from keras.optimizers import Adam
 
@@ -30,7 +31,7 @@ class Executor:
         print("initialized training data from: "+train_path)
         print("initialized validation data from: "+val_path)
 
-    def finetune_only_softmax_layer_for_epochs(self, num_epochs):
+    def train_for_epochs(self, num_epochs):
         self.vgg.finetune(self.train_batches)
 
         self.vgg.fit_generator(self.train_batches, self.val_batches, nb_epoch=num_epochs)
@@ -115,22 +116,32 @@ class ExecutorBuilder:
         if(self.train_dense_layers):
             self.executor.make_linear_layers_trainable()
 
-        self.executor.compile(self.learn_rate)
+        # Figure out why this throws an error!!
+        # self.executor.compile(self.learn_rate)
         return self.executor
 
 
 if __name__ == "__main__":
+    # get parameters from system arguments
+    train_epochs = int(sys.argv[1])
+    learn_rate = float(sys.argv[2])
+    data_path = sys.argv[3]
+
+    print("train_epochs: ", train_epochs)
+    print("learn_rate", learn_rate)
+    print ("data_path: ", data_path)
+
     executor = ExecutorBuilder().\
         with_Vgg16().\
         and_().\
         train_batch_size(2). \
         and_(). \
-        learn_rate(0.001).\
+        learn_rate(learn_rate).\
         and_().\
-        data_on_path("../data/sample/").\
+        data_on_path(data_path).\
         and_().\
         trainable_linear_layers().\
         build()
 
-    executor.finetune_only_softmax_layer_for_epochs(1).and_().save_model_to_file("weights.trial.h5").and_().\
+    executor.train_for_epochs(train_epochs).and_().save_model_to_file("weights.h5").and_().\
         build_predictions_on_test_data().and_().save_predictions_to_file("predictions.trial.h5")
