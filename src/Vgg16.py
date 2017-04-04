@@ -15,7 +15,7 @@ class Vgg16():
     vgg_mean = np.array([123.68, 116.779, 103.939], dtype=np.float32).reshape((3, 1, 1))
 
     def __init__(self):
-        self.FILE_PATH = '../weights/'
+        self.FILE_PATH = 'file://./models/'
         self.model = None
         self.create()
         self.get_classes()

@@ -1,5 +1,7 @@
 .idea
 .idea/
-weights
-weights/
+models/
 data/
+src/*.pyc
+src/Vgg16.pyc
+src/*.h5

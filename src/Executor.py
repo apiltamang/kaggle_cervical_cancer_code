@@ -1,6 +1,5 @@
 
 from Vgg16 import Vgg16
-# import Vgg16BN
 from IPython.display import FileLink
 
 class Executor:
@@ -31,7 +30,9 @@ class Executor:
 
     def finetune_only_softmax_layer_for_epochs(self, num_epochs):
         self.vgg.finetune(self.train_batches)
-        self.vgg.fit(self.train_batches, self.val_batches, nb_epoch=num_epochs)
+        self.vgg.compile(self.learn_rate)
+
+        self.vgg.fit_generator(self.train_batches, self.val_batches, nb_epoch=num_epochs)
         print("Vgg model finetuned.")
         return self;
 
@@ -69,18 +70,12 @@ class ExecutorBuilder:
         return self
 
     def with_Vgg16(self):
-        vgg16 = Vgg16()
-        self.executor.set_Vgg(vgg16)
+        self.vgg = Vgg16()
+        print("Pretrained Vgg16 model loaded.")
         return self
-
-    # def with_Vgg16BN(self):
-    #     vgg16 = Vgg16BN()
-    #     self.executor.set_Vgg(vgg16)
-    #     return self
 
     def data_on_path(self, data_folder):
         self.executor.data_path = data_folder
-        self.executor.init_validation_and_training_data()
         return self
 
     def train_batch_size(self, batch_size):
@@ -92,6 +87,8 @@ class ExecutorBuilder:
         return self
 
     def build(self):
+        self.executor.set_Vgg(self.vgg)
+        self.executor.init_validation_and_training_data()
         return self.executor
 
 
@@ -99,13 +96,12 @@ if __name__ == "__main__":
     executor = ExecutorBuilder().\
         with_Vgg16().\
         and_().\
-        data_on_path("../data/sample/").\
-        and_().\
-        train_batch_size(2).\
-        and_().\
+        train_batch_size(2). \
+        and_(). \
         learn_rate(0.001).\
+        and_().\
+        data_on_path("../data/sample/").\
         build()
 
-
-    executor.finetune_only_softmax_layer_for_epochs(5).and_().save_model_to_file("weights.trial.h5").and_().\
-        build_predictions_on_test_data().and_().save_model_to_file("predictions.trial.h5")
+    executor.finetune_only_softmax_layer_for_epochs(1).and_().save_model_to_file("weights.trial.h5").and_().\
+        build_predictions_on_test_data().and_().save_predictions_to_file("predictions.trial.h5")

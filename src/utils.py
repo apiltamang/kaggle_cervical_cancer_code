@@ -48,8 +48,8 @@ from keras.layers.convolutional import *
 from keras.preprocessing import image, sequence
 from keras.preprocessing.text import Tokenizer
 
-from vgg16 import *
-from vgg16bn import *
+from Vgg16 import *
+from Vgg16BN import *
 np.set_printoptions(precision=4, linewidth=100)
 
 
@@ -132,7 +132,7 @@ def adjust_dropout(weights, prev_p, new_p):
     return [o*scal for o in weights]
 
 
-def get_data(path, target_size=(224,224)):
+def get_all_data(path, target_size=(224,224)):
     batches = get_batches(path, shuffle=False, batch_size=1, class_mode=None, target_size=target_size)
     return np.concatenate([batches.next() for i in range(batches.nb_sample)])
 
