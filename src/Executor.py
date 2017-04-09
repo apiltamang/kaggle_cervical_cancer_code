@@ -25,11 +25,11 @@ class Executor:
         self.learn_rate = None
 
         self.val_precomputed = None
-        self.trn_precomputed = None
+        self.train_precomputed = None
         self.val_classes = None
         self.trn_classes = None
         self.val_labels = None
-        self.trn_labels = None
+        self.train_labels = None
 
         self.conv_layers = None
         self.rescaled_fc_model = None
@@ -44,6 +44,12 @@ class Executor:
         self.dropout = 0.5
 
     def init_validation_and_training_data(self):
+        '''
+        Initializes train_batches and val_batches; arguably, the two most
+        important properties. Initialize by default when constructing the
+        executor object.
+        :return: train_batches, val_batches, num_softmax_classes
+        '''
         train_path = self.data_path+"train"
         val_path = self.data_path+"valid"
 
@@ -54,7 +60,34 @@ class Executor:
         print("initialized validation data from: "+val_path)
 
         self.num_softmax_classes = self.train_batches.nb_class
-        print("found number of softmax classes: "+self.num_softmax_classes)
+        print("found number of softmax classes: "+str(self.num_softmax_classes))
+
+    def init_conv_and_fc_models(self):
+        '''
+        Method initializes the convolution and fc models. Wouldn't
+        hurt to initialize them by default.
+        :return: initilizes self.conv_layers, self.conv_model and self.fc_layers
+        '''
+        layers = self.vgg.model.layers
+        last_conv_idx = [index for index, layer in enumerate(layers)
+                         if type(layer) is Convolution2D][-1]
+        self.conv_layers = layers[:last_conv_idx+1]
+
+        self.conv_model = Sequential(self.conv_layers)
+        self.fc_layers = layers[last_conv_idx+1:]
+        return self
+
+    def init_train_and_val_classes_and_labels(self):
+        '''
+        Method initialized val and train classes and labels. These properties will be
+        used by various other methods.
+        :return: self.val_classes, self.val_labels, self.train_classes, self.train_labels,
+        '''
+        self.val_classes = self.val_batches.classes
+        self.val_labels = onehot(self.val_classes)
+
+        self.train_classes = self.train_batches.classes
+        self.train_labels = onehot(self.train_classes)
 
     def replace_and_tune_softmax_layer_for_epochs(self, num_epochs=4):
         '''
@@ -66,6 +99,9 @@ class Executor:
         :return:
         '''
         self.vgg.finetune(self.train_batches)
+
+        # The above changes the vgg.model, hence reinitialize basic parameters
+        self.init_conv_and_fc_models()
 
         self.vgg.fit_generator(self.train_batches, self.val_batches, nb_epoch=num_epochs)
         print("Vgg model finetuned.")
@@ -119,48 +155,51 @@ class Executor:
         self.vgg.compile(lr=learn_rate)
         return self
 
-    def init_conv_and_fc_model(self):
-        layers = self.vgg.model.layers
-        last_conv_idx = [index for index, layer in enumerate(layers)
-                         if type(layer) is Convolution2D][-1]
-        self.conv_layers = layers[:last_conv_idx+1]
-
-        self.conv_model = Sequential(self.conv_layers)
-        self.fc_layers = layers[last_conv_idx+1:]
-        return self
-
     def precompute_conv_model_outputs(self):
+        '''
+        Method precomputes outputs from the convolution models. Initializes the following
+        class properties:
 
-        self.init_conv_and_fc_models()
+        :return: self.val_precomputed, self.train_precomputed
+        '''
 
-        self.val_classes = self.val_batches.classes
-        self.val_labels = onehot(self.val_classes)
+        print("precomputing conv. model outputs..")
 
-        self.trn_classes = self.trn_classes
-        self.trn_labels = onehot(self.trn_labels)
+        if(self.conv_model is None):
+            self.init_conv_and_fc_models()
 
         self.val_precomputed = self.conv_model.predict_generator(self.val_batches, self.val_batches.nb_sample)
-        self.trn_precomputed = self.conv_model.predict_generator(self.trn_batches, self.trn_batches.nb_sample)
+        self.train_precomputed = self.conv_model.predict_generator(self.train_batches, self.train_batches.nb_sample)
 
         self.save_precomputed_conv_models()
+        print("done.")
         return self
 
     def save_precomputed_conv_models(self):
         fName1 = "precomputed_trn_features."+self.runID+".h5"
         fName2 = "precomputed_val_features."+self.runID+".h5"
 
-        save_array(fName1, self.trn_precomputed)
+        save_array(fName1, self.train_precomputed)
         save_array(fName2, self.val_precomputed)
+        print("models saved to files: ",fName1, " and ", fName2)
 
         return self;
 
     def load_precomputed_conv_models(self):
+        '''
+        Method loads precomputed conv_model outputs. Initializes:
+
+        :return: self.train_precomputed and self.val_precomputed.
+        '''
+        print("loading precomputed conv. outputs...")
+
         fName1 = "precomputed_trn_features."+self.runID+".h5"
         fName2 = "precomputed_val_features."+self.runID+".h5"
 
-        load_array(fName1, self.trn_precomputed)
-        load_array(fName2, self.val_precomputed)
+        self.train_precomputed = load_array(fName1)
+        self.val_precomputed = load_array(fName2)
 
+        print("done...")
         return self;
 
     def proc_wgts(self, layer, prev_dropout, new_dropout):
@@ -173,7 +212,7 @@ class Executor:
         :return: array of rescaled weights
         '''
         scale = (1.0 - prev_dropout)/(1.0 - new_dropout)
-        return [o * scale for o in layer.get_weights]
+        return [o * scale for o in layer.get_weights()]
 
     def get_rescaled_fc_model(self, new_dropout):
         '''
@@ -184,8 +223,7 @@ class Executor:
         :param new_dropout: new dropout probability to keep.
         :return: new fc model whose weights in the fc layers have been rescaled
         '''
-        opt = RMSprop(lr=0.00001, rho=0.7)
-
+        print("getting rescaled fc model...")
         model = Sequential([
             MaxPooling2D(input_shape=self.conv_layers[-1].output_shape[1:]),
             Flatten(),
@@ -197,11 +235,14 @@ class Executor:
         ])
 
         for l1, l2 in zip(model.layers, self.fc_layers):
+            print("found dense layer. Distributing scaled weights..")
             l1.set_weights(self.proc_wgts(l2, self.dropout, new_dropout))
 
+        print ("done...")
         # update dropout
+        print("updating dropout from: ",self.dropout," to: ",new_dropout)
         self.dropout = new_dropout
-        model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+
         return model
 
     def init_and_fit_rescaled_fc_model(self, new_dropout):
@@ -213,14 +254,19 @@ class Executor:
         :param new_dropout: new dropout to apply
         :return: a finely tuned fc model whose weights in the fc layers have been rescaled.
         '''
-
+        print("initializing rescaled fc model...")
         self.rescaled_fc_model = self.get_rescaled_fc_model(new_dropout)
 
         # such a finely tuned model needs to be updated very slowly...
-        self.rescaled_fc_model.fit(self.trn_precomputed, self.trn_labels, nb_epoch=8,
+        opt = RMSprop(lr=0.00001, rho=0.7)
+        self.rescaled_fc_model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
+
+        print("fine tuning the rescaled fc model...")
+        self.rescaled_fc_model.fit(self.train_precomputed, self.train_labels, nb_epoch=8,
                        batch_size= self.batch_size, validation_data=(self.val_precomputed, self.val_labels))
 
         self.rescaled_fc_model.save_weights("rescaled_and_tuned_fc_model."+self.runID+".dropout."+str(new_dropout)+".h5")
+        print("done...")
 
 class ExecutorBuilder:
 
@@ -229,6 +275,10 @@ class ExecutorBuilder:
         self.train_dense_layers = False
 
     def and_(self):
+        return self
+
+    def with_runID(self, val):
+        self.executor.runID = str(val);
         return self
 
     def with_Vgg16(self):
@@ -254,7 +304,11 @@ class ExecutorBuilder:
 
     def build(self):
         self.executor.set_Vgg(self.vgg)
+
+        # initialize some fundamental class properties
         self.executor.init_validation_and_training_data()
+        self.executor.init_train_and_val_classes_and_labels()
+        self.executor.init_conv_and_fc_models()
 
         if(self.train_dense_layers):
             self.executor.make_linear_layers_trainable()
@@ -267,27 +321,30 @@ class ExecutorBuilder:
 
 if __name__ == "__main__":
     # get parameters from system arguments
-    train_epochs = int(sys.argv[1])
-    learn_rate = float(sys.argv[2])
-    data_path = sys.argv[3]
+    # train_epochs = int(sys.argv[1])
+    # learn_rate = float(sys.argv[2])
+    # data_path = sys.argv[3]
 
-    print("train_epochs: ", train_epochs)
-    print("learn_rate", learn_rate)
-    print ("data_path: ", data_path)
+    # print("train_epochs: ", train_epochs)
+    # print("learn_rate", learn_rate)
+    # print ("data_path: ", data_path)
 
     executor = ExecutorBuilder().\
+        with_runID("trial").\
+        and_().\
         with_Vgg16().\
         and_().\
         train_batch_size(2). \
         and_(). \
-        learn_rate(learn_rate).\
+        learn_rate(0.01).\
         and_().\
-        data_on_path(data_path).\
-        and_().\
-        trainable_linear_layers().\
+        data_on_path("../data/sample/").\
         build()
 
-    executor.replace_and_tune_softmax_layer_for_epochs(train_epochs).and_().save_model_to_file().and_().\
-        build_predictions_on_test_data().and_().save_predictions_to_file()
+    #executor.replace_and_tune_softmax_layer_for_epochs(1).and_().save_model_to_file().and_().\
+    #     build_predictions_on_test_data().and_().save_predictions_to_file()
 
-    executor.precompute_conv_model_outputs();
+    #executor.precompute_conv_model_outputs();
+    executor.replace_and_tune_softmax_layer_for_epochs(0).and_().\
+        load_precomputed_conv_models().and_().\
+        get_rescaled_fc_model(new_dropout=0.0)

@@ -5,3 +5,5 @@ data/
 src/*.pyc
 src/Vgg16.pyc
 src/*.h5
+*.trial.h5/
+download/
