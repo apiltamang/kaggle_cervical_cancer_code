@@ -10,7 +10,7 @@ from IPython.display import FileLink
 from utils import onehot
 from utils import save_array
 from utils import load_array
-
+from keras.preprocessing import image
 
 class Executor:
 
@@ -35,6 +35,7 @@ class Executor:
         self.rescaled_fc_model = None
         self.num_softmax_classes = None
         self.dropout = None
+        self.use_precomputed_conv_output = False
 
     def and_(self):
         return self;
@@ -77,6 +78,21 @@ class Executor:
         self.fc_layers = layers[last_conv_idx+1:]
         return self
 
+    def init_custom_softmax_layer(self):
+        '''
+        Method replaces the last dense layer of the VGG
+        with a custom softmax layer, with the number of
+        units (neurons) equalling the total # of classes
+        we find for the given problem.
+        :return:
+        '''
+        self.vgg.finetune(self.train_batches)
+
+        # The above changes the vgg.model, hence reinitialize basic parameters
+        self.init_conv_and_fc_models()
+
+        return self
+
     def init_train_and_val_classes_and_labels(self):
         '''
         Method initialized val and train classes and labels. These properties will be
@@ -89,19 +105,13 @@ class Executor:
         self.train_classes = self.train_batches.classes
         self.train_labels = onehot(self.train_classes)
 
-    def replace_and_tune_softmax_layer_for_epochs(self, num_epochs=4):
+    def tune_softmax_layer_for_epochs(self, num_epochs=4):
         '''
-        In this method, the last dense layer from VGG will be replaced with a
-        custom softmax layer and (only) it will be trained for specified epochs.
-        The other dense layers will be made non-trainable (happens in the finetune
-        method)
+        tune (fit) only the softmax layers. The other layers are made
+        non-trainable implicitly.
         :param num_epochs: Specify num_epochs to finetune only the softmax layer
         :return:
         '''
-        self.vgg.finetune(self.train_batches)
-
-        # The above changes the vgg.model, hence reinitialize basic parameters
-        self.init_conv_and_fc_models()
 
         self.vgg.fit_generator(self.train_batches, self.val_batches, nb_epoch=num_epochs)
         print("Vgg model finetuned.")
@@ -120,14 +130,25 @@ class Executor:
         return self;
 
     def build_predictions_on_test_data(self):
+        '''
+        Method can be used to build predictions, either by default using the underlying
+        vgg model, or via any model passed along to it.
+        :param model: A Keras model
+        :return:
+        '''
         test_path = self.data_path + "test"
+
         b, p= self.vgg.test(test_path, batch_size=2)
 
         self.prediction = zip([name[8:] for name in b.filenames], p.astype('str'))
         return self;
 
-    def save_predictions_to_file(self):
-        fileName = "predictions." + self.runID + ".h5"
+    def save_predictions_to_file(self, fileName=None):
+
+        if fileName is None:
+            fileName = "predictions." + self.runID + ".h5"
+        else:
+            fileName = "predictions."+fileName+"."+self.runID+".h5"
 
         outF = open(fileName, 'w')
         outF.write('image_name,Type_1,Type_2,Type_3\n')
@@ -139,7 +160,11 @@ class Executor:
         return self;
 
     def make_linear_layers_trainable(self):
-
+        '''
+        Method iterates through the linear layers of the VGG model,
+        and sets them as being trainable.
+        :return:
+        '''
         layers = self.vgg.model.layers
         # Get the index of the first dense layer...
         first_dense_idx = [index for index,layer in enumerate(layers) if type(layer) is Dense][0]
@@ -151,8 +176,51 @@ class Executor:
 
         return self
 
+    def train_for_epochs(self, num_epochs):
+        '''
+        Method runs the vgg for specified number of epochs, with the preset learn_rate.
+        :param num_epochs:
+        :return:
+        '''
+
+        # if not using output from precomputed conv. model, then invoke VGG's fit_generator
+        # to initiate training the model.
+        if not self.use_precomputed_conv_output:
+            self.compile(self.learn_rate)
+            self.vgg.fit_generator(self.train_batches, self.val_batches, nb_epoch=num_epochs)
+            return
+
+        # else just train the linear models. Do so by creating a new instance of the linear
+        # layers, and training it against the outputs from the precomputed data arrays.
+
+        linearModel = self.get_rescaled_fc_model(new_dropout=self.dropout)
+        linearModel.compile(optimizer=RMSprop(lr=self.learn_rate, rho=0.7), loss='categorical_crossentropy', metrics = ['accuracy'])
+
+        linearModel.fit(self.train_precomputed, self.train_labels, batch_size=self.batch_size,
+                        nb_epoch= num_epochs, validation_data=(self.val_precomputed, self.val_labels))
+
+
+        self.init_vgg_with_retrained_fc_layers(linearModel)
+        return self
+
     def compile(self, learn_rate=0.001):
         self.vgg.compile(lr=learn_rate)
+        return self
+
+
+    def init_vgg_with_retrained_fc_layers(self, fc_layers):
+        '''
+        Method reinitializes the vgg model so that all the layers,
+        after the last convolution model, are replaced by the given
+        fully connected layers. These fc_layers are typically obtained
+        after they were trained separately.
+        :param fc_layers: Sequence of keras layers
+        :return:
+        '''
+        self.vgg.model =  self.conv_model
+        for layer in fc_layers.layers:
+            self.vgg.model.add(layer)
+
         return self
 
     def precompute_conv_model_outputs(self):
@@ -172,6 +240,10 @@ class Executor:
         self.train_precomputed = self.conv_model.predict_generator(self.train_batches, self.train_batches.nb_sample)
 
         self.save_precomputed_conv_models()
+
+        # set this flag to true, since we'll now only train against the linear models of the VGG.
+        self.use_precomputed_conv_output = True
+
         print("done.")
         return self
 
@@ -198,6 +270,10 @@ class Executor:
 
         self.train_precomputed = load_array(fName1)
         self.val_precomputed = load_array(fName2)
+
+        # since we're loading precomputed outputs from the conv_model,
+        # set this flag to true.
+        self.use_precomputed_conv_output = True
 
         print("done...")
         return self;
@@ -309,6 +385,7 @@ class ExecutorBuilder:
         self.executor.init_validation_and_training_data()
         self.executor.init_train_and_val_classes_and_labels()
         self.executor.init_conv_and_fc_models()
+        self.executor.init_custom_softmax_layer()
 
         if(self.train_dense_layers):
             self.executor.make_linear_layers_trainable()
@@ -334,17 +411,30 @@ if __name__ == "__main__":
         and_().\
         with_Vgg16().\
         and_().\
-        train_batch_size(2). \
+        train_batch_size(3). \
         and_(). \
         learn_rate(0.01).\
         and_().\
         data_on_path("../data/sample/").\
         build()
 
+    '''------------------------------------------------------------------------------
+    NAIVE FIRST ATTEMPT: replace and tune only the softmax layer
+    '''
     #executor.replace_and_tune_softmax_layer_for_epochs(1).and_().save_model_to_file().and_().\
     #     build_predictions_on_test_data().and_().save_predictions_to_file()
 
-    #executor.precompute_conv_model_outputs();
-    executor.replace_and_tune_softmax_layer_for_epochs(0).and_().\
-        load_precomputed_conv_models().and_().\
-        get_rescaled_fc_model(new_dropout=0.0)
+
+    '''------------------------------------------------------------------------------
+    PRECOMPUTE CONV_MODEL OUTPUTS:
+    Only precompute outputs from the conv. model and stop.
+    '''
+    executor.precompute_conv_model_outputs()
+
+    '''------------------------------------------------------------------------------
+    SECOND ATTEMPT:
+    1. evaluate and load precomputed conv. model output
+    2. train only the linear models for specified # of epochs
+    '''
+    executor.load_precomputed_conv_models().and_().train_for_epochs(1).and_().\
+        build_predictions_on_test_data().and_().save_predictions_to_file("foobar")
