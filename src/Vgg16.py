@@ -68,7 +68,7 @@ class Vgg16():
         model.load_weights(get_file(fname, self.FILE_PATH+fname, cache_subdir='models'))
 
 
-    def get_batches(self, path, gen=image.ImageDataGenerator(), shuffle=True, batch_size=8, class_mode='categorical'):
+    def get_batches(self, path, gen=image.ImageDataGenerator(), shuffle=False, batch_size=16, class_mode=None):
         return gen.flow_from_directory(path, target_size=(224,224),
                 class_mode=class_mode, shuffle=shuffle, batch_size=batch_size)
 

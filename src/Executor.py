@@ -2,7 +2,7 @@ import sys
 from keras.layers import Dense, Convolution2D, Flatten, Dropout
 from keras.layers import MaxPooling2D
 from keras.models import Sequential
-from keras.optimizers import Adam, RMSprop
+from keras.optimizers import Adam
 
 from Vgg16 import Vgg16
 from IPython.display import FileLink
@@ -183,18 +183,13 @@ class Executor:
         :return:
         '''
 
-        # if not using output from precomputed conv. model, then invoke VGG's fit_generator
-        # to initiate training the model.
-        if not self.use_precomputed_conv_output:
-            self.compile(self.learn_rate)
-            self.vgg.fit_generator(self.train_batches, self.val_batches, nb_epoch=num_epochs)
-            return
+        self.compile(self.learn_rate)
+        self.vgg.fit_generator(self.train_batches, self.val_batches, nb_epoch=num_epochs)
+        return self
 
-        # else just train the linear models. Do so by creating a new instance of the linear
-        # layers, and training it against the outputs from the precomputed data arrays.
-
+    def train_rescaled_fc_model_for_epochs(self, num_epochs):
         linearModel = self.get_rescaled_fc_model(new_dropout=self.dropout)
-        linearModel.compile(optimizer=RMSprop(lr=self.learn_rate, rho=0.7), loss='categorical_crossentropy', metrics = ['accuracy'])
+        linearModel.compile(optimizer=Adam(lr=self.learn_rate), loss='categorical_crossentropy', metrics = ['accuracy'])
 
         linearModel.fit(self.train_precomputed, self.train_labels, batch_size=self.batch_size,
                         nb_epoch= num_epochs, validation_data=(self.val_precomputed, self.val_labels))
@@ -334,7 +329,7 @@ class Executor:
         self.rescaled_fc_model = self.get_rescaled_fc_model(new_dropout)
 
         # such a finely tuned model needs to be updated very slowly...
-        opt = RMSprop(lr=0.00001, rho=0.7)
+        opt = Adam(lr=0.00001)
         self.rescaled_fc_model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
         print("fine tuning the rescaled fc model...")
