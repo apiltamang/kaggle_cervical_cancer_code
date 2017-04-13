@@ -24,6 +24,8 @@ class Executor:
         self.val_batches = None
         self.data_path = None
         self.learn_rate = None
+        self.train_path = None
+        self.val_path = None
 
         self.val_precomputed = None
         self.train_precomputed = None
@@ -52,11 +54,11 @@ class Executor:
         executor object.
         :return: train_batches, val_batches, num_softmax_classes
         '''
-        train_path = self.data_path+"train"
-        val_path = self.data_path+"valid"
+        self.train_path = self.data_path+"train"
+        self.val_path = self.data_path+"valid"
 
-        self.train_batches = self.vgg.get_batches(batch_size=self.batch_size, path=train_path)
-        self.val_batches = self.vgg.get_batches(batch_size=self.batch_size, path=val_path)
+        self.train_batches = self.vgg.get_batches(batch_size=self.batch_size, path=self.train_path)
+        self.val_batches = self.vgg.get_batches(batch_size=self.batch_size, path=self.val_path)
 
         print("initialized training data from: "+train_path)
         print("initialized validation data from: "+val_path)
@@ -232,13 +234,14 @@ class Executor:
         if(self.conv_model is None):
             self.init_conv_and_fc_models()
 
-        self.val_precomputed = self.conv_model.predict_generator(self.val_batches, self.val_batches.nb_sample)
-        self.train_precomputed = self.conv_model.predict_generator(self.train_batches, self.train_batches.nb_sample)
+
+        temp_train_batches = self.vgg.get_batches(batch_size=self.batch_size, path=self.train_path, shuffle=False, class_mode=None)
+        temp_val_batches = self.vgg.get_batches(batch_size=self.batch_size, path=self.val_path, shuffle=False, class_mode=None)
+
+        self.train_precomputed = self.conv_model.predict_generator(temp_train_batches, self.train_batches.nb_sample)
+        self.val_precomputed = self.conv_model.predict_generator(temp_val_batches, self.val_batches.nb_sample)
 
         self.save_precomputed_conv_models()
-
-        # set this flag to true, since we'll now only train against the linear models of the VGG.
-        self.use_precomputed_conv_output = True
 
         print("done.")
         return self
@@ -330,11 +333,11 @@ class Executor:
         self.rescaled_fc_model = self.get_rescaled_fc_model(new_dropout)
 
         # such a finely tuned model needs to be updated very slowly...
-        opt = Adam(lr=0.00001)
+        opt = Adam(lr=0.000001)
         self.rescaled_fc_model.compile(optimizer=opt, loss='categorical_crossentropy', metrics=['accuracy'])
 
         print("fine tuning the rescaled fc model...")
-        self.rescaled_fc_model.fit(self.train_precomputed, self.train_labels, nb_epoch=8,
+        self.rescaled_fc_model.fit(self.train_precomputed, self.train_labels, nb_epoch=4,
                        batch_size= self.batch_size, validation_data=(self.val_precomputed, self.val_labels))
 
         self.rescaled_fc_model.save_weights("rescaled_and_tuned_fc_model."+self.runID+".dropout."+str(new_dropout)+".h5")
