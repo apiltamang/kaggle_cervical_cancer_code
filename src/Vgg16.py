@@ -8,16 +8,15 @@ from keras.layers.core import Flatten, Dense, Dropout, Lambda
 from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
 from keras.optimizers import Adam
 from keras.preprocessing import image
+import os
 
 class Vgg16(object):
     """The VGG 16 Imagenet model"""
 
-    vgg_mean = np.array([123.68, 116.779, 103.939], dtype=np.float32).reshape((3, 1, 1))
-
-    def __init__(self):
-        self.FILE_PATH = 'file://models/'
+    def __init__(self, WEIGHTS_FILE):
+        self.FILE_PATH = 'file://'+os.getcwd()
         self.model = None
-        self.create()
+        self.create(weights_file=WEIGHTS_FILE)
         self.get_classes()
 
     def get_classes(self):
@@ -49,7 +48,7 @@ class Vgg16(object):
         model.add(Dropout(0.5))
 
 
-    def create(self):
+    def create(self, weights_file):
         model = self.model = Sequential()
         model.add(Lambda(self.vgg_preprocess, input_shape=(3,224,224), output_shape=(3,224,224)))
 
@@ -64,8 +63,7 @@ class Vgg16(object):
         self.FCBlock()
         model.add(Dense(1000, activation='softmax'))
 
-        fname = 'vgg16.h5'
-        model.load_weights(get_file(fname, self.FILE_PATH+fname, cache_subdir='models'))
+        model.load_weights(get_file(weights_file, self.FILE_PATH + weights_file, cache_subdir='models'))
 
 
     def get_batches(self, path, gen=image.ImageDataGenerator(), shuffle=False, batch_size=16, class_mode=None):
@@ -108,5 +106,6 @@ class Vgg16(object):
         return test_batches, self.model.predict_generator(test_batches, test_batches.nb_sample)
 
     def vgg_preprocess(self, x):
-        x = x - self.vgg_mean
+        vgg_mean = np.array([123.68, 116.779, 103.939], dtype=np.float32).reshape((3, 1, 1))
+        x = x - vgg_mean
         return x[:, ::-1] # reverse axis rgb->bgr

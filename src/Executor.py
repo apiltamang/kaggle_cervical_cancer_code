@@ -7,7 +7,7 @@ from keras.optimizers import Adam
 from Vgg16 import Vgg16
 from IPython.display import FileLink
 
-from src.Vgg16BN import Vgg16BN
+from Vgg16BN import Vgg16BN
 from utils import onehot
 from utils import save_array
 from utils import load_array
@@ -354,7 +354,7 @@ class ExecutorBuilder:
         return self
 
     def with_Vgg16(self):
-        self.vgg = Vgg16()
+        self.vgg = Vgg16('vgg16.h5')
         print("Pretrained Vgg16 model loaded.")
         return self
 
@@ -410,7 +410,7 @@ if __name__ == "__main__":
     executor = ExecutorBuilder().\
         with_runID("trial.bn.").\
         and_().\
-        with_Vgg16BN().\
+        with_Vgg16().\
         and_().\
         train_batch_size(3). \
         and_(). \
@@ -422,8 +422,7 @@ if __name__ == "__main__":
     '''------------------------------------------------------------------------------
     NAIVE FIRST ATTEMPT: replace and tune only the softmax layer
     '''
-    #executor.replace_and_tune_softmax_layer_for_epochs(1).and_().save_model_to_file().and_().\
-    #     build_predictions_on_test_data().and_().save_predictions_to_file()
+    executor.tune_softmax_layer_for_epochs(1)
 
 
     '''------------------------------------------------------------------------------
@@ -437,5 +436,5 @@ if __name__ == "__main__":
     1. evaluate and load precomputed conv. model output
     2. train only the linear models for specified # of epochs
     '''
-    executor.load_precomputed_conv_models().and_().train_for_epochs(1).and_().\
-        build_predictions_on_test_data().and_().save_predictions_to_file("foobar.bn")
+    #executor.load_precomputed_conv_models().and_().train_for_epochs(1).and_().\
+    #    build_predictions_on_test_data().and_().save_predictions_to_file("foobar.bn")
