@@ -9,13 +9,13 @@ from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2
 from keras.optimizers import Adam
 from keras.preprocessing import image
 
-class Vgg16():
+class Vgg16(object):
     """The VGG 16 Imagenet model"""
 
     vgg_mean = np.array([123.68, 116.779, 103.939], dtype=np.float32).reshape((3, 1, 1))
 
     def __init__(self):
-        self.FILE_PATH = 'file://./models/'
+        self.FILE_PATH = 'file://models/'
         self.model = None
         self.create()
         self.get_classes()

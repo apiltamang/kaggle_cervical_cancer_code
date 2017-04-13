@@ -1,13 +1,18 @@
-import Vgg16
+from Vgg16 import Vgg16
 from keras.layers import Dense, BatchNormalization, Dropout, Lambda, Flatten
 from keras.models import Sequential
+from keras.utils.data_utils import get_file
+import os
 
 class Vgg16BN(Vgg16):
-    """The VGG 16 Imagenet model with Batch Normalization for the Dense Layers"""
+    """The VGG 16 Imagenet model with Batch
+        Normalization for the Dense Layers
+    """
 
-    def __init__(self, size=(224,224), include_top=True):
-        self.FILE_PATH = '../weights/'
-        self.create(size, include_top)
+    def __init__(self):
+        models_dir = os.getcwd()+"/models/"
+        self.FILE_PATH = 'file://'+models_dir
+        self.create(size=(224,224), include_top=True)
         super(Vgg16BN, self).get_classes()
 
     def FCBlock(self):
@@ -40,6 +45,6 @@ class Vgg16BN(Vgg16):
         model.add(Dense(1000, activation='softmax'))
 
         fname = 'vgg16_bn.h5'
-        model.load_weights(super(Vgg16BN, self).get_file(fname, self.FILE_PATH+fname, cache_subdir='models'))
+        model.load_weights(get_file(fname, self.FILE_PATH+fname, cache_subdir='models'))
 
 

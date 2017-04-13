@@ -7,6 +7,7 @@ from keras.optimizers import Adam
 from Vgg16 import Vgg16
 from IPython.display import FileLink
 
+from src.Vgg16BN import Vgg16BN
 from utils import onehot
 from utils import save_array
 from utils import load_array
@@ -357,6 +358,11 @@ class ExecutorBuilder:
         print("Pretrained Vgg16 model loaded.")
         return self
 
+    def with_Vgg16BN(self):
+        self.vgg = Vgg16BN()
+        print("Pretrained Vgg16BN model loaded.")
+        return self
+
     def data_on_path(self, data_folder):
         self.executor.data_path = data_folder
         return self
@@ -402,13 +408,13 @@ if __name__ == "__main__":
     # print ("data_path: ", data_path)
 
     executor = ExecutorBuilder().\
-        with_runID("trial").\
+        with_runID("trial.bn.").\
         and_().\
-        with_Vgg16().\
+        with_Vgg16BN().\
         and_().\
         train_batch_size(3). \
         and_(). \
-        learn_rate(0.01).\
+        learn_rate(0.001).\
         and_().\
         data_on_path("../data/sample/").\
         build()
@@ -424,7 +430,7 @@ if __name__ == "__main__":
     PRECOMPUTE CONV_MODEL OUTPUTS:
     Only precompute outputs from the conv. model and stop.
     '''
-    executor.precompute_conv_model_outputs()
+    # executor.precompute_conv_model_outputs()
 
     '''------------------------------------------------------------------------------
     SECOND ATTEMPT:
@@ -432,4 +438,4 @@ if __name__ == "__main__":
     2. train only the linear models for specified # of epochs
     '''
     executor.load_precomputed_conv_models().and_().train_for_epochs(1).and_().\
-        build_predictions_on_test_data().and_().save_predictions_to_file("foobar")
+        build_predictions_on_test_data().and_().save_predictions_to_file("foobar.bn")
