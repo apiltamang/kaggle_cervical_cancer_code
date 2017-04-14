@@ -13,15 +13,21 @@ import os
 class Vgg16(object):
     """The VGG 16 Imagenet model"""
 
+    def __init__(self):
+        self.FILE_PATH = 'file://'+os.getcwd()+"/models/"
+        self.model = None
+        self.create(weights_file="vgg16.h5")
+        self.get_classes()
+        
     def __init__(self, WEIGHTS_FILE):
-        self.FILE_PATH = 'file://'+os.getcwd()
+        self.FILE_PATH = 'file://'+os.getcwd()+"/models/"
         self.model = None
         self.create(weights_file=WEIGHTS_FILE)
         self.get_classes()
 
     def get_classes(self):
         fname = 'imagenet_class_index.json'
-        fpath = get_file(fname, self.FILE_PATH+fname, cache_subdir='models')
+        fpath = get_file(fname, self.FILE_PATH+fname, cache_subdir='models_cache')
         with open(fpath) as f:
             class_dict = json.load(f)
         self.classes = [class_dict[str(i)][1] for i in range(len(class_dict))]
@@ -63,7 +69,7 @@ class Vgg16(object):
         self.FCBlock()
         model.add(Dense(1000, activation='softmax'))
 
-        model.load_weights(get_file(weights_file, self.FILE_PATH + weights_file, cache_subdir='models'))
+        model.load_weights(get_file(weights_file, self.FILE_PATH + weights_file, cache_subdir='models_cache'))
 
 
     def get_batches(self, path, gen=image.ImageDataGenerator(), shuffle=True, batch_size=16, class_mode='categorical'):
@@ -109,3 +115,18 @@ class Vgg16(object):
         vgg_mean = np.array([123.68, 116.779, 103.939], dtype=np.float32).reshape((3, 1, 1))
         x = x - vgg_mean
         return x[:, ::-1] # reverse axis rgb->bgr
+    
+    def get_new_fc_model(self, conv_layer, num_softmax_classes, new_dropout=0.5):
+        new_model = Sequential([
+            MaxPooling2D(input_shape=conv_layer.output_shape[1:]),
+            Flatten(),
+            Dense(4096, activation='relu'),
+            Dropout(new_dropout),
+            Dense(4096, activation='relu'),
+            Dropout(new_dropout),
+            Dense(num_softmax_classes, activation='softmax')
+        ])
+        
+        return new_model
+
+

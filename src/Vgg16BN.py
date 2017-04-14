@@ -1,5 +1,6 @@
 from Vgg16 import Vgg16
 from keras.layers import Dense, BatchNormalization, Dropout, Lambda, Flatten
+from keras.layers.convolutional import MaxPooling2D
 from keras.models import Sequential
 from keras.utils.data_utils import get_file
 import os
@@ -18,31 +19,18 @@ class Vgg16BN(Vgg16):
         model.add(Dense(4096, activation='relu'))
         model.add(BatchNormalization())
         model.add(Dropout(0.5))
-
-    # def create(self, size, include_top):
-    #     if size != (224,224):
-    #         include_top=False
-    #
-    #     model = super(Vgg16BN, self).model = Sequential()
-    #     model.add(Lambda(super(Vgg16BN, self).vgg_preprocess, input_shape=(3,)+size, output_shape=(3,)+size))
-    #
-    #     super(Vgg16BN, self).ConvBlock(2, 64)
-    #     super(Vgg16BN, self).ConvBlock(2, 128)
-    #     super(Vgg16BN, self).ConvBlock(3, 256)
-    #     super(Vgg16BN, self).ConvBlock(3, 512)
-    #     super(Vgg16BN, self).ConvBlock(3, 512)
-    #
-    #     if not include_top:
-    #         fname = 'vgg16_bn_conv.h5'
-    #         model.load_weights(super(Vgg16BN, self).get_file(fname, self.FILE_PATH+fname, cache_subdir='models'))
-    #         return
-    #
-    #     model.add(Flatten())
-    #     self.FCBlock()
-    #     self.FCBlock()
-    #     model.add(Dense(1000, activation='softmax'))
-    #
-    #     fname = 'vgg16_bn.h5'
-    #     model.load_weights(get_file(fname, self.FILE_PATH+fname, cache_subdir='models'))
-
-
+    
+    def get_new_fc_model(self, conv_layer, num_softmax_classes, new_dropout=0.5):
+        new_model = Sequential([
+            MaxPooling2D(input_shape=conv_layer.output_shape[1:]),
+            Flatten(),
+            Dense(4096, activation='relu'),            
+            BatchNormalization(),
+            Dropout(new_dropout),
+            Dense(4096, activation='relu'),
+            BatchNormalization(),
+            Dropout(new_dropout),
+            Dense(num_softmax_classes, activation='softmax')
+        ])
+        
+        return new_model

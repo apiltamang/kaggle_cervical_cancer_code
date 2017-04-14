@@ -299,16 +299,8 @@ class Executor:
         :return: new fc model whose weights in the fc layers have been rescaled
         '''
         print("getting rescaled fc model...")
-        model = Sequential([
-            MaxPooling2D(input_shape=self.conv_layers[-1].output_shape[1:]),
-            Flatten(),
-            Dense(4096, activation='relu'),
-            Dropout(new_dropout),
-            Dense(4096, activation='relu'),
-            Dropout(new_dropout),
-            Dense(self.num_softmax_classes, activation='softmax')
-        ])
-
+        model = self.vgg.get_new_fc_model(self.conv_layers[-1], self.num_softmax_classes, new_dropout)
+        
         for l1, l2 in zip(model.layers, self.fc_layers):
             print("found dense layer. Distributing scaled weights..")
             l1.set_weights(self.proc_wgts(l2, self.dropout, new_dropout))
