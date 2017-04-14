@@ -13,6 +13,8 @@ from utils import save_array
 from utils import load_array
 from keras.preprocessing import image
 
+import os
+
 class Executor:
 
     def __init(self):
@@ -39,6 +41,12 @@ class Executor:
         self.num_softmax_classes = None
         self.dropout = None
         self.use_precomputed_conv_output = False
+
+        cwd = os.getcwd();
+        run_dir = os.path.join(cwd, self.runID)
+
+        if not os.path.exists(run_dir):
+            os.mkdirs(run_dir)
 
     def and_(self):
         return self;
@@ -120,15 +128,19 @@ class Executor:
         print("Vgg model finetuned.")
         return self;
 
-    def save_model_to_file(self):
+    def save_model_to_file(self, fileName=None):
 
-        fileName = "weights." + self.runID + ".h5"
+        if fileName is None:
+            fileName = "weights." + self.runID + ".h5"
+
         self.vgg.model.save_weights(fileName)
         return self;
 
-    def load_model_from_file(self):
+    def load_model_from_file(self, fileName=None):
 
-        fileName = "weights." + self.runID + ".h5"
+        if fileName is None:
+            fileName = "weights." + self.runID + ".h5"
+
         self.vgg.model.load_weights(fileName)
         return self;
 
@@ -150,8 +162,6 @@ class Executor:
 
         if fileName is None:
             fileName = "predictions." + self.runID + ".h5"
-        else:
-            fileName = "predictions."+fileName+"."+self.runID+".h5"
 
         outF = open(fileName, 'w')
         outF.write('image_name,Type_1,Type_2,Type_3\n')
@@ -159,8 +169,7 @@ class Executor:
         for elem in self.prediction:
             outF.write(elem[0] + ',' + ','.join(elem[1]) + '\n')
         outF.close()
-        FileLink(fileName)
-        return self;
+        return FileLink(fileName)
 
     def make_linear_layers_trainable(self):
         '''
