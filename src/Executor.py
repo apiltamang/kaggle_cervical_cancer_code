@@ -412,7 +412,7 @@ if __name__ == "__main__":
     # print ("data_path: ", data_path)
 
     executor = ExecutorBuilder().\
-        with_runID("trial.bn.").\
+        with_runID("trial").\
         and_().\
         with_Vgg16().\
         and_().\
@@ -426,7 +426,7 @@ if __name__ == "__main__":
     '''------------------------------------------------------------------------------
     NAIVE FIRST ATTEMPT: replace and tune only the softmax layer
     '''
-    executor.tune_softmax_layer_for_epochs(1)
+    # executor.tune_softmax_layer_for_epochs(1)
 
 
     '''------------------------------------------------------------------------------
