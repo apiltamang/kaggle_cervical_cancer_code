@@ -40,7 +40,7 @@ class DataSetup:
     ### Downsize image to 224 * 224 * 3 ###
     def resize(self, img_path):
         img = imread(img_path)
-        img = imresize(img, (224,224,3))
+        #img = imresize(img, (224,224,3))
         return img
 
     ### Decide whether the image gets saved to train or valid ###
@@ -117,17 +117,17 @@ class DataSetup:
 
 if __name__ == "__main__":
     a = DataSetup()
-    a.create_folders("../../data/full/")
+    a.create_folders("../../data/segmented/")
 
     # first process the testing data-set
     # a.process_test(imgs_src="../../download/test/", imgs_dest="../../data/full/")
 
     # # process and split data in /download/train directory. Resizes, splits and saves to folders: imgs_dest/train, imgs_dest/valid
-    # a.create_valid_imgs_list(imgs_src="../../download/train/", ext_name=".txt")
-    # a.init_train_and_valid_set(imgs_src="../../download/train/", imgs_dest="../../data/full/", val_imgs_list_file_ext=".txt")
+    a.create_valid_imgs_list(imgs_src="../../segmented_src/train/", ext_name=".txt")
+    a.init_train_and_valid_set(imgs_src="../../segmented_src/train/", imgs_dest="../../data/segmented/", val_imgs_list_file_ext=".txt")
 
     # process and split data in /download/additional directory. Resizes, splits and saves to folders: imgs_dest/train, imgs_dest/valid
-    a.create_valid_imgs_list(imgs_src="../../download/additional/", ext_name=".additional.txt")
-    a.init_train_and_valid_set(imgs_src="../../download/additional/", imgs_dest="../../data/full/", val_imgs_list_file_ext=".additional.txt")
+    # a.create_valid_imgs_list(imgs_src="../../download/additional/", ext_name=".additional.txt")
+    # a.init_train_and_valid_set(imgs_src="../../download/additional/", imgs_dest="../../data/full/", val_imgs_list_file_ext=".additional.txt")
 
 
