@@ -228,6 +228,7 @@ class Executor:
         for layer in fc_layers.layers:
             self.vgg.model.add(layer)
 
+        self.vgg.model.compile(optimizer=Adam(self.learn_rate), loss='categorical_crossentropy', metrics=['accuracy'])
         return self
 
     def precompute_conv_model_outputs(self):
