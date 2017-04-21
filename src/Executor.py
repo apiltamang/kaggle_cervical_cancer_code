@@ -224,10 +224,7 @@ class Executor:
         :param fc_layers: Sequence of keras layers
         :return:
         '''
-        self.vgg.model =  self.conv_model
-        for layer in fc_layers.layers:
-            self.vgg.model.add(layer)
-
+        self.vgg.init_vgg_with_retrained_fc_layers(self, fc_layers)
         return self
 
     def precompute_conv_model_outputs(self):
