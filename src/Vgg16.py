@@ -129,4 +129,14 @@ class Vgg16(object):
         
         return new_model
 
+    def init_vgg_with_retrained_fc_layers(self, fc_layers, learn_rate=0.001):
+        layers = self.model.layers
+        last_conv_idx = [index for index, layer in enumerate(layers)
+                         if type(layer) is Convolution2D][-1]
+
+        for l1, l2 in zip(self.model.layers[last_conv_idx+1:], fc_layers):
+            l1.set_weights(l2.get_weights())
+
+        self.compile(learn_rate)
+
 
