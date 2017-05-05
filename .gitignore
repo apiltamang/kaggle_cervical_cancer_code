@@ -3,7 +3,6 @@
 src/.ipynb_checkpoints/
 models/
 data/
-src/processing/
 src/*.pyc
 src/Vgg16.pyc
 src/*.h5
@@ -11,3 +10,5 @@ src/*.h5
 download/
 src/Vgg16BN.pyc
 segmented_src/
+*.pyc
+src/processing/.ipynb_checkpoints/
