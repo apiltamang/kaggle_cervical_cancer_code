@@ -6,10 +6,11 @@ import cv2
 
 class ImageIterator:
 
-    def __init__(self, train_path, valid_path, test_path):
+    def __init__(self, train_path, valid_path, test_path, save_img_path):
         self.TRAIN_DATA= train_path
         self.VALID_DATA= valid_path
         self.TEST_DATA = test_path
+        self.SAVE_IMG_PATH = save_img_path
 
     def getType_1_2_3_ids(self, train_path):
         print("looking for images in: ", train_path)
@@ -23,9 +24,9 @@ class ImageIterator:
         # you may do the following to process
         # a fraction of the data for early experimentation.
 
-        # type_1_ids = type_1_ids[:9]
-        # type_2_ids = type_2_ids[:9]
-        # type_3_ids = type_3_ids[:9]
+        type_1_ids = type_1_ids[:10]
+        type_2_ids = type_2_ids[:10]
+        type_3_ids = type_3_ids[:10]
 
         return type_1_ids, type_2_ids, type_3_ids
 
