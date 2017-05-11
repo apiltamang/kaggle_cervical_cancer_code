@@ -24,9 +24,9 @@ class ImageIterator:
         # you may do the following to process
         # a fraction of the data for early experimentation.
 
-        type_1_ids = type_1_ids[:10]
-        type_2_ids = type_2_ids[:10]
-        type_3_ids = type_3_ids[:10]
+        #type_1_ids = type_1_ids[:10]
+        #type_2_ids = type_2_ids[:10]
+        #type_3_ids = type_3_ids[:10]
 
         return type_1_ids, type_2_ids, type_3_ids
 
@@ -45,7 +45,7 @@ class ImageIterator:
                     counter += 1
 
                     # Get the image
-                    if image_type == "TRAIN":
+                    if image_type == "TRAIN" or image_type == "VALID":
                         img = get_image_data(image_id, 'Type_%i' % (k + 1), src_image_path)
                     else:
                         img = get_image_data(image_id, 'unknown', src_image_path)
@@ -69,8 +69,11 @@ class ImageIterator:
                     sys.stdout.write("progress: %s  \r" % (str(frac)))
                     sys.stdout.flush()
 
-                except:
+                except Exception as err:
                     print("error processing image: ", image_id, '. Type_%i' % (k + 1), " on path: ", src_image_path)
+                    print("============================")
+                    print(err)
+                    print("============================")
 
             print("moved: ", good_images, " out of: ", counter, " for Type_%i" % (k + 1))
 
